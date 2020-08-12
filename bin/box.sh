@@ -4,22 +4,28 @@
 # Purpose is simply to draw boxes but with a little extra something going on.
 # Additional logic enables existing characters to merge with new ones to create
 # seemless intersections, i.e. no broken boxes.
-clear
 
+trap cleanupDuties EXIT
 
 # Paths
 dirBin=$(dirname $0)
 dirHome=${dirBin}/..
 dirCfg=${dirHome}/cfg
+dirCfgSystem=${dirHome}/cfg/system
+dirCfgSystemState=${dirHome}/cfg/system/state
 dirLogs=${dirHome}/logs
 logFile=${dirLogs}/processLog
+logicPlainStateFile=${dirCfgSystemState}/logicPlain.state
+displayPlainStateFile=${dirCfgSystemState}/displayPlain.state
+artifactRegisterStateFile=${dirCfgSystemState}/artifactRegister.state
+artifactKeysStateFile=${dirCfgSystemState}/artifactKeys.state
 
 # Character mapping
 source ${dirCfg}/characterMap.cfg
 source ${dirCfg}/transformationMap.cfg
 
 pLog() {
-: echo -e "$*" >>${logFile} 
+ echo -e "$*" >>${logFile} 
 }
 
 getLogicPlain() {
@@ -57,7 +63,7 @@ makeChar() {
 # Provide: $1=Artifact name, $2=Artifact Key
 addArtifactKeys() {
  artifactKeys[${1}]="${artifactKeys[$1]} $2 " 
- pLog "$1 = ${artifactKeys[$1]}"
+# pLog "$1 = ${artifactKeys[$1]}"
 }
 
 # Provide: $1=Artifact Name
@@ -82,12 +88,19 @@ printChar() {
 registerArtifact() {
 # need to check for existing artifact name - they should all be unique
  artifactRegister[$1]="$2,$3,$4,$5"
- pLog $1 $2 $3 $4 $5
+# pLog $1 $2 $3 $4 $5
 }
 
 # Provide: X Y W H
 createArtifact() {
  artifactName=$1
+# If an artifact already exists with that name so need to do anything else
+   if [ "${artifactRegister[${artifactName}]}" != "" ]
+   then
+     pLog $artifactName already exists
+     return
+   fi
+
  registerArtifact $1 $2 $3 $4 $5
  declare -i x=$2 y=$3 w=$4 h=$5
  declare -i xAw=x+w-1
@@ -124,7 +137,67 @@ createArtifact() {
    done
 }
 
-#####################################################\
+dumpLogicPlain() {
+{
+  echo -ne "#!/bin/bash
+
+declare -A logicPlain=("
+    for allKeys in ${!logicPlain[*]}
+    do
+      echo -ne "[${allKeys}]=\"${logicPlain[${allKeys}]}\" "
+    done
+  echo ")"
+} >${logicPlainStateFile}
+}
+
+dumpDisplayPlain() {
+{
+  echo -ne "#!/bin/bash
+
+declare -A displayPlain=("
+    for allKeys in ${!displayPlain[*]}
+    do
+      echo -ne "[${allKeys}]=\"${displayPlain[${allKeys}]}\" "
+    done
+  echo ")"
+} >${displayPlainStateFile}
+}
+
+dumpArtifactRegister() {
+{
+  echo -ne "#!/bin/bash
+
+declare -A artifactRegister=("
+    for allKeys in ${!artifactRegister[*]}
+    do
+      echo -ne "[${allKeys}]=\"${artifactRegister[${allKeys}]}\" "
+    done
+  echo ")"
+} >${artifactRegisterStateFile}
+}
+
+dumpArtifactKeys() {
+{
+  echo -ne "#!/bin/bash
+
+declare -A artifactKeys=("
+    for allKeys in ${!artifactKeys[*]}
+    do
+      echo -ne "[${allKeys}]=\"${artifactKeys[${allKeys}]}\" "
+    done
+  echo ")"
+} >${artifactKeysStateFile}
+}
+
+cleanupDuties() {
+ pLog "> Exit signal detected - performing $0 cleanup and recovery:"
+ dumpLogicPlain
+ dumpDisplayPlain
+ dumpArtifactRegister
+ dumpArtifactKeys
+}
+
+#####################################################
 #############################
 ##
 #	START HERE
@@ -132,6 +205,12 @@ createArtifact() {
 declare -A logicPlain displayPlain
 declare -A artifactRegister
 declare -A artifactKeys
+
+# retrieveSystemState()
+   [ -f ${logicPlainStateFile} ]	&& source ${logicPlainStateFile}
+   [ -f ${displayPlainStateFile} ] 	&& source ${displayPlainStateFile}
+   [ -f ${artifactRegisterStateFile} ]	&& source ${artifactRegisterStateFile}
+   [ -f ${artifactKeysStateFile} ]	&& source ${artifactKeysStateFile}
 
 #declare -i aCount=1
 
@@ -166,7 +245,6 @@ declare -i maxRows=$(tput lines)
 #
 #  done
 
-
 createArtifact Outline 0 0 $maxCols $maxRows
 createArtifact Menu 1 1 15 13
 createArtifact Status 0 $((maxRows-3)) $maxCols 3
@@ -175,3 +253,4 @@ displayArtifact Outline
 displayArtifact Status
 displayArtifact Menu
 
+sleep 100
