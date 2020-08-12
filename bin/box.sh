@@ -19,7 +19,7 @@ source ${dirCfg}/characterMap.cfg
 source ${dirCfg}/transformationMap.cfg
 
 pLog() {
- echo -e "$*" >>${logFile}
+: echo -e "$*" >>${logFile} 
 }
 
 getLogicPlain() {
@@ -40,16 +40,37 @@ getDisplayPlain() {
  echo -ne "${displayPlain[${xyKey}]:-" "}"
 }
 
-drawChar() {
- charShortCode=$1 dcx=$2 dcy=$3
+makeChar() {
+ artifactName=$1
+ charShortCode=$2 dcx=$3 dcy=$4
  xyKey="$dcx,$dcy"
    [ ${h} -eq 1 -a ${w} -gt 1 ] && charShortCode=HCL
    [ ${w} -eq 1 -a ${h} -gt 1 ] && charShortCode=VCL
  setLogicPlain ${charShortCode}
  setDisplayPlain $(getLogicPlain)
- printChar $dcx $dcy "$(getDisplayPlain)"
+ displayChar="$(getDisplayPlain)"
+# At this stage have generated the morphed character
+ addArtifactKeys ${artifactName} ${xyKey}
+# printChar $dcx $dcy "${displayChar}"
 }
 
+# Provide: $1=Artifact name, $2=Artifact Key
+addArtifactKeys() {
+ artifactKeys[${1}]="${artifactKeys[$1]} $2 " 
+ pLog "$1 = ${artifactKeys[$1]}"
+}
+
+# Provide: $1=Artifact Name
+displayArtifact() {
+ thisArtifact=""
+   for xyKey in ${artifactKeys[$1]} 
+   do
+     x=${xyKey%,*}     
+     y=${xyKey#*,}     
+     thisArtifact="${thisArtifact}$(printChar $x $y $(getDisplayPlain))"
+   done
+ echo -ne "${thisArtifact}"
+}
 # This is a temporary routine
 # Provide: X Y coordinates
 printChar() {
@@ -57,12 +78,20 @@ printChar() {
  tput cup $2 $1 ; echo -ne "${3}"
 }
 
+# Provide: Artifact Name, x y, w, h
+registerArtifact() {
+# need to check for existing artifact name - they should all be unique
+ artifactRegister[$1]="$2,$3,$4,$5"
+ pLog $1 $2 $3 $4 $5
+}
+
 # Provide: X Y W H
-drawBox() {
- declare -i x=$1 y=$2 w=$3 h=$4
+createArtifact() {
+ artifactName=$1
+ registerArtifact $1 $2 $3 $4 $5
+ declare -i x=$2 y=$3 w=$4 h=$5
  declare -i xAw=x+w-1
  declare -i yAh=y+h-1
-
 # Work out corner coordinates
  declare -i xTLC=x yTLC=y
  declare -i xTRC=xAw yTRC=y
@@ -70,10 +99,10 @@ drawBox() {
  declare -i xBRC=xAw yBRC=yAh
 
 # Draw corners
- drawChar TLC $xTLC $yTLC
- drawChar TRC $xTRC $yTRC
- drawChar BLC $xBLC $yBLC
- drawChar BRC $xBRC $yBRC
+ makeChar ${artifactName} TLC $xTLC $yTLC
+ makeChar ${artifactName} TRC $xTRC $yTRC
+ makeChar ${artifactName} BLC $xBLC $yBLC
+ makeChar ${artifactName} BRC $xBRC $yBRC
 
 # Draw Top and bottom horizontal lines
  declare -i cX=x
@@ -81,16 +110,16 @@ drawBox() {
  cX=xTLC+1
    while [ ${cX} -le $((xTRC-1)) ]
    do
-     drawChar HCL $cX $yTLC
-     drawChar HCL $cX $yBLC
+     makeChar ${artifactName} HCL $cX $yTLC
+     makeChar ${artifactName} HCL $cX $yBLC
      cX+=1 
    done
 # Draw Left and right vertical lines
  cY=yTLC+1
    while [ ${cY} -le $((yBLC-1)) ]
    do
-     drawChar VCL $xTLC $cY
-     drawChar VCL $xTRC $cY
+     makeChar ${artifactName} VCL $xTLC $cY
+     makeChar ${artifactName} VCL $xTRC $cY
      cY+=1 
    done
 }
@@ -101,25 +130,48 @@ drawBox() {
 #	START HERE
 
 declare -A logicPlain displayPlain
+declare -A artifactRegister
+declare -A artifactKeys
+
+#declare -i aCount=1
 
 # Test code to just show how the code works.
-# All you really need to do is issue the drawBox line below with x y width and height values.
+# All you really need to do is issue the createArtifact line below with x y width and height values.
 # Top left corner of the screen screen is 0,0.  Minimum value for w and h is 1 - same square.
 declare -i maxCols=$(tput cols) count=0
 declare -i maxRows=$(tput lines)
-  while :
-  do count+=1
-      if [ $((${count}%100)) -eq 0 ]
-      then
-        unset logicPlain displayPlain
-        declare -A logicPlain displayPlain
-        clear
-      fi
+#  while :
+#  do count+=1
+#      if [ $((${count}%100)) -eq 0 ]
+#      then
+#        unset logicPlain displayPlain
+#        declare -A logicPlain displayPlain
+#        clear
+#      fi
+#
+#    x=$((RANDOM%(maxCols-8)))
+#    y=$((RANDOM%(maxRows-8)))
+#    w=$(($((RANDOM%(maxCols-x)+1))%20+1))
+#    h=$(($((RANDOM%(maxRows-y-1)+1))%20+1))
+#    createArtifact artifact_${aCount} $x $y $w $h
+#    displayArtifact artifact_${aCount}
+#    aCount+=1
+#
+##      for n in {1..10}
+##      do
+##        pLog $n ; clear;
+##        time displayArtifact artifact_${aCount} 
+##        sleep 2
+##      done
+#
+#  done
 
-    x=$((RANDOM%(maxCols-8)))
-    y=$((RANDOM%(maxRows-8)))
-    w=$(($((RANDOM%(maxCols-x)+1))%20+1))
-    h=$(($((RANDOM%(maxRows-y-1)+1))%20+1))
-    drawBox $x $y $w $h
-  done
+
+createArtifact Outline 0 0 $maxCols $maxRows
+createArtifact Menu 1 1 15 13
+createArtifact Status 0 $((maxRows-3)) $maxCols 3
+
+displayArtifact Outline
+displayArtifact Status
+displayArtifact Menu
 
