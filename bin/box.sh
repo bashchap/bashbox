@@ -5,7 +5,9 @@
 # Additional logic enables existing characters to merge with new ones to create
 # seemless intersections, i.e. no broken boxes.
 
-trap cleanupDuties EXIT
+clear
+
+#trap cleanupDuties EXIT
 
 # Paths
 dirBin=$(dirname $0)
@@ -18,6 +20,7 @@ logFile=${dirLogs}/processLog
 logicPlainStateFile=${dirCfgSystemState}/logicPlain.state
 displayPlainStateFile=${dirCfgSystemState}/displayPlain.state
 artifactRegisterStateFile=${dirCfgSystemState}/artifactRegister.state
+artifactRenderStateFile=${dirCfgSystemState}/artifactRender.state
 artifactKeysStateFile=${dirCfgSystemState}/artifactKeys.state
 
 # Character mapping
@@ -69,14 +72,23 @@ addArtifactKeys() {
 # Provide: $1=Artifact Name
 displayArtifact() {
  thisArtifact=""
-   for xyKey in ${artifactKeys[$1]} 
-   do
-     x=${xyKey%,*}     
-     y=${xyKey#*,}     
-     thisArtifact="${thisArtifact}$(printChar $x $y $(getDisplayPlain))"
-   done
+   if [ "${artifactRender["$1"]}" = "" ]
+   then
+     pLog "displayArtifact() - Creating $1"
+       for xyKey in ${artifactKeys[$1]} 
+       do
+         x=${xyKey%,*}     
+         y=${xyKey#*,}     
+         thisArtifact="${thisArtifact}$(printChar $x $y $(getDisplayPlain))"
+       done
+     artifactRender["${1}"]="${thisArtifact}"
+   else
+     pLog "displayArtifact() - $1 already exists"
+     thisArtifact="${artifactRender["${1}"]}"
+   fi
  echo -ne "${thisArtifact}"
 }
+
 # This is a temporary routine
 # Provide: X Y coordinates
 printChar() {
@@ -91,13 +103,13 @@ registerArtifact() {
 # pLog $1 $2 $3 $4 $5
 }
 
-# Provide: X Y W H
+# Provide: Name X Y W H
 createArtifact() {
  artifactName=$1
 # If an artifact already exists with that name so need to do anything else
    if [ "${artifactRegister[${artifactName}]}" != "" ]
    then
-     pLog $artifactName already exists
+     pLog "createArtifact() - $artifactName already exists"
      return
    fi
 
@@ -176,6 +188,19 @@ declare -A artifactRegister=("
 } >${artifactRegisterStateFile}
 }
 
+dumpArtifactRender() {
+{
+  echo -ne "#!/bin/bash
+
+declare -A artifactRender=("
+    for allKeys in ${!artifactRender[*]}
+    do
+      echo -ne "[${allKeys}]=\"${artifactRender[${allKeys}]}\" "
+    done
+  echo ")"
+} >${artifactRenderStateFile}
+}
+
 dumpArtifactKeys() {
 {
   echo -ne "#!/bin/bash
@@ -195,6 +220,7 @@ cleanupDuties() {
  dumpDisplayPlain
  dumpArtifactRegister
  dumpArtifactKeys
+ dumpArtifactRender
 }
 
 #####################################################
@@ -205,12 +231,21 @@ cleanupDuties() {
 declare -A logicPlain displayPlain
 declare -A artifactRegister
 declare -A artifactKeys
+declare -A artifactRender
 
-# retrieveSystemState()
+#cd ${dirCfgSystemState} && source ./*.state && cd - 1>/dev/null
+#retrieveSystemState()
    [ -f ${logicPlainStateFile} ]	&& source ${logicPlainStateFile}
    [ -f ${displayPlainStateFile} ] 	&& source ${displayPlainStateFile}
    [ -f ${artifactRegisterStateFile} ]	&& source ${artifactRegisterStateFile}
    [ -f ${artifactKeysStateFile} ]	&& source ${artifactKeysStateFile}
+   [ -f ${artifactRenderStateFile} ]	&& source ${artifactRenderStateFile}
+#echo -ne "${artifactRender[Outline]}"
+#exit
+#ls -l ${dirCfgSystemState}/artifactRender.state 
+#source ${dirCfgSystemState}/artifactRender.state 
+#echo -ne "${artifactRender[Status]}"
+#exit
 
 #declare -i aCount=1
 
@@ -253,4 +288,3 @@ displayArtifact Outline
 displayArtifact Status
 displayArtifact Menu
 
-sleep 100
