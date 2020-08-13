@@ -7,7 +7,7 @@
 
 clear
 
-#trap cleanupDuties EXIT
+trap cleanupDuties EXIT
 
 # Paths
 dirBin=$(dirname $0)
