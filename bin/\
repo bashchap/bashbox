@@ -51,19 +51,18 @@ getDisplayPlain() {
 }
 
 makeChar() {
- artifactName=$1 charShortCode=$2 dcx=$3 dcy=$4
+ artifactName=$1
+ charShortCode=$2 dcx=$3 dcy=$4
  xyKey="$dcx,$dcy"
-# Override provided CSC if coordinates will create a straigh line
    [ ${h} -eq 1 -a ${w} -gt 1 ] && charShortCode=HCL
    [ ${w} -eq 1 -a ${h} -gt 1 ] && charShortCode=VCL
-# Setup xref variable bitmap code of CSC
- bitMapCode=bm${charShortCode} 
- logicPlain[${xyKey}]=$((${logicPlain[${xyKey}]:-0}|${!bitMapCode}))
- xyKeyChar="u${bitMap[${logicPlain[${xyKey}]}]#bm}"
- displayPlain[${xyKey}]="\u${!xyKeyChar}"
+ setLogicPlain ${charShortCode}
+ setDisplayPlain $(getLogicPlain)
+#displayChar="$(getDisplayPlain)"
  displayChar="${displayPlain[${xyKey}]:-" "}"
 # At this stage have generated the morphed character
  addArtifactKeys ${artifactName} ${xyKey}
+# printChar $dcx $dcy "${displayChar}"
 }
 
 # Provide: $1=Artifact name, $2=Artifact Key
