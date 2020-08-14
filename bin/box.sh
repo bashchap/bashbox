@@ -31,25 +31,6 @@ pLog() {
  echo -e "$*" >>${logFile} 
 }
 
-getLogicPlain() {
- echo "${logicPlain[${xyKey}]:-0}"
-}
-
-setLogicPlain() {
- bitMapCode=bm${charShortCode} 
- logicPlain[${xyKey}]=$((${logicPlain[${xyKey}]:-0}|${!bitMapCode}))
-}
-
-setDisplayPlain() {
- xyKeyChar="u${bitMap[$1]#bm}"
- displayPlain[${xyKey}]="$(echo -e "\u${!xyKeyChar}")"
-}
-
-# Old function - not used anymore
-getDisplayPlain() {
- echo -ne "${displayPlain[${xyKey}]:-" "}"
-}
-
 makeChar() {
  artifactName=$1 charShortCode=$2 dcx=$3 dcy=$4
  xyKey="$dcx,$dcy"
@@ -80,10 +61,7 @@ displayArtifact() {
      pLog "displayArtifact() - Creating $1"
        for xyKey in ${artifactKeys[$1]} 
        do
-         x=${xyKey%,*}     
-         y=${xyKey#*,}     
-#         thisArtifact="${thisArtifact}$(printChar $x $y $(getDisplayPlain))"
-#         thisArtifact="${thisArtifact}\033[$(($y+1));$(($x+1))H$(getDisplayPlain)"
+         x=${xyKey%,*} y=${xyKey#*,}     
          thisArtifact="${thisArtifact}\033[$(($y+1));$(($x+1))H${displayPlain[${xyKey}]:-" "}"
        done
      artifactRender["${1}"]="${thisArtifact}"
@@ -233,57 +211,44 @@ cleanupDuties() {
 ##
 #	START HERE
 
-declare -A logicPlain displayPlain
-declare -A artifactRegister
-declare -A artifactKeys
-declare -A artifactRender
+declare -A logicPlain displayPlain artifactRegister artifactKeys artifactRender
 
-#cd ${dirCfgSystemState} && source ./*.state && cd - 1>/dev/null
-#retrieveSystemState()
+# Recover system state from cache
    [ -f ${logicPlainStateFile} ]	&& source ${logicPlainStateFile}
    [ -f ${displayPlainStateFile} ] 	&& source ${displayPlainStateFile}
    [ -f ${artifactRegisterStateFile} ]	&& source ${artifactRegisterStateFile}
    [ -f ${artifactKeysStateFile} ]	&& source ${artifactKeysStateFile}
    [ -f ${artifactRenderStateFile} ]	&& source ${artifactRenderStateFile}
-#echo -ne "${artifactRender[Outline]}"
-#exit
-#ls -l ${dirCfgSystemState}/artifactRender.state 
-#source ${dirCfgSystemState}/artifactRender.state 
-#echo -ne "${artifactRender[Status]}"
-#exit
 
-#declare -i aCount=1
 
 # Test code to just show how the code works.
 # All you really need to do is issue the createArtifact line below with x y width and height values.
 # Top left corner of the screen screen is 0,0.  Minimum value for w and h is 1 - same square.
+declare -i aCount=1
 declare -i maxCols=$(tput cols) count=0
 declare -i maxRows=$(tput lines)
-#  while :
-#  do count+=1
-#      if [ $((${count}%100)) -eq 0 ]
-#      then
-#        unset logicPlain displayPlain
-#        declare -A logicPlain displayPlain
-#        clear
-#      fi
-#
-#    x=$((RANDOM%(maxCols-8)))
-#    y=$((RANDOM%(maxRows-8)))
-#    w=$(($((RANDOM%(maxCols-x)+1))%20+1))
-#    h=$(($((RANDOM%(maxRows-y-1)+1))%20+1))
-#    createArtifact artifact_${aCount} $x $y $w $h
-#    displayArtifact artifact_${aCount}
-#    aCount+=1
-#
-##      for n in {1..10}
-##      do
-##        pLog $n ; clear;
-##        time displayArtifact artifact_${aCount} 
-##        sleep 2
-##      done
-#
-#  done
+  while :
+  do count+=1
+      if [ $((${count}%1000)) -eq 0 ]
+      then
+        unset logicPlain displayPlain artifactRegister artifactKeys artifactRender
+        declare -A logicPlain displayPlain artifactRegister artifactKeys artifactRender
+        clear
+      fi
+
+    x=$((RANDOM%(maxCols-8)))
+    y=$((RANDOM%(maxRows-8)))
+    w=$(($((RANDOM%(maxCols-x)+1))%20+1))
+#    w=$(($((RANDOM%(maxCols-x)+1))+1))
+    h=$(($((RANDOM%(maxRows-y-1)+1))%20+1))
+#    h=$(($((RANDOM%(maxRows-y-1)+1))+1))
+    createArtifact artifact_${aCount} $x $y $w $h
+    displayArtifact artifact_${aCount}
+    aCount+=1
+
+  done
+
+exit
 
 createArtifact Outline 0 0 $maxCols $maxRows
 createArtifact Menu 1 1 15 13
