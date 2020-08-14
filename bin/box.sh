@@ -58,7 +58,7 @@ displayArtifact() {
  thisArtifact=""
    if [ "${artifactRender["$1"]}" = "" ]
    then
-     pLog "displayArtifact() - Creating $1"
+#     pLog "displayArtifact() - Creating $1"
        for xyKey in ${artifactKeys[$1]} 
        do
          x=${xyKey%,*} y=${xyKey#*,}     
@@ -66,7 +66,7 @@ displayArtifact() {
        done
      artifactRender["${1}"]="${thisArtifact}"
    else
-     pLog "displayArtifact() - $1 already exists"
+#     pLog "displayArtifact() - $1 already exists"
      thisArtifact="${artifactRender["${1}"]}"
    fi
  echo -ne "${thisArtifact}"
@@ -92,7 +92,7 @@ createArtifact() {
 # If an artifact already exists with that name so need to do anything else
    if [ "${artifactRegister[${artifactName}]}" != "" ]
    then
-     pLog "createArtifact() - $artifactName already exists"
+#     pLog "createArtifact() - $artifactName already exists"
      return
    fi
 
